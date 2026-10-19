@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch Later</title>
+<style>
+  :root {
+    --bg: #f7f7f8; --surface: #ffffff; --text: #111114; --muted: #60606b;
+    --border: #e3e3e8; --accent: #e5262c; --chip: #ececf0; --chip-on: #111114; --chip-on-text: #fff;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f0f12; --surface: #1a1a1f; --text: #f1f1f4; --muted: #a0a0ab;
+      --border: #2a2a31; --accent: #ff4b50; --chip: #26262d; --chip-on: #f1f1f4; --chip-on-text: #111114;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 16px; }
+  .top { display: flex; align-items: center; gap: 12px; padding: 14px 0 10px; flex-wrap: wrap; }
+  h1 { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; }
+  h1 .dot { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); }
+  .stats { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .spacer { flex: 1; }
+  button, select, input { font: inherit; color: var(--text); }
+  .btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  .btn:hover { border-color: var(--muted); }
+  .btn[disabled] { opacity: .5; cursor: progress; }
+  .controls { display: flex; gap: 8px; padding-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  .controls input[type=search] { flex: 1 1 240px; min-width: 0; padding: 7px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface); }
+  .controls select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); max-width: 100%; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 0; background: var(--chip); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+  .chip[aria-pressed=true] { background: var(--chip-on); color: var(--chip-on-text); }
+  label.toggle { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
+  main { padding: 16px 0 48px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px 16px; }
+  .card { background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow);
+    border: 1px solid var(--border); display: flex; flex-direction: column; cursor: pointer; }
+  .card:hover .thumb img { transform: scale(1.03); }
+  .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .thumb { position: relative; aspect-ratio: 16/9; background: var(--chip); overflow: hidden; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s; }
+  .badge { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.8); color: #fff;
+    font-size: 12px; font-weight: 600; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.35); }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+  .card.done .thumb img { opacity: .6; }
+  .prog { font-weight: 600; color: var(--accent); }
+  .acts { position: absolute; right: 6px; top: 6px; display: flex; gap: 6px; }
+  .act { border: 0; border-radius: 6px; padding: 3px 8px;
+    background: rgba(0,0,0,.7); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; opacity: 0; transition: opacity .15s; }
+  .card:hover .act, .card:focus-within .act, .act.armed, .act:disabled { opacity: 1; }
+  @media (hover: none) { .act { opacity: 1; } }
+  .act:hover { background: rgba(0,0,0,.85); }
+  .act.armed { background: var(--accent); }
+  .act:disabled { cursor: progress; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg);
+    padding: 8px 14px; border-radius: 8px; z-index: 20; max-width: calc(100vw - 32px); }
+  .pos { position: absolute; left: 6px; top: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px;
+    padding: 1px 6px; border-radius: 4px; }
+  .body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .title { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .meta a { color: inherit; text-decoration: none; }
+  .meta a:hover { color: var(--text); text-decoration: underline; }
+  .card.gone { opacity: .55; cursor: default; }
+  .empty, .error { text-align: center; color: var(--muted); padding: 64px 16px; }
+  .error { color: var(--accent); white-space: pre-wrap; }
+  dialog { border: 0; padding: 0; border-radius: 12px; background: var(--surface); color: var(--text);
+    width: min(1000px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(0,0,0,.7); }
+  dialog iframe { width: 100%; aspect-ratio: 16/9; border: 0; display: block; }
+  .dlg-bar { display: flex; gap: 12px; align-items: center; padding: 10px 14px; }
+  .dlg-bar .t { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dlg-bar a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1><span class="dot"></span>Watch Later</h1>
+      <span class="stats" id="stats">Loading…</span>
+      <span class="spacer"></span>
+      <span class="stats" id="fetched"></span>
+      <button class="btn" id="refresh">Refresh</button>
+    </div>
+    <div class="controls">
+      <input type="search" id="q" placeholder="Search title or channel" autocomplete="off">
+      <select id="channel"><option value="">All channels</option></select>
+      <select id="sort">
+        <option value="pos">Playlist order</option>
+        <option value="watched-desc">Watch % (high to low)</option>
+        <option value="watched">Watch % (low to high)</option>
+        <option value="pos-desc">Reverse playlist order</option>
+        <option value="dur">Shortest first</option>
+        <option value="dur-desc">Longest first</option>
+        <option value="views-desc">Most viewed</option>
+        <option value="title">Title A–Z</option>
+      </select>
+      <div class="chips" id="len">
+        <button class="chip" data-len="" aria-pressed="true">Any length</button>
+        <button class="chip" data-len="0-600" aria-pressed="false">&lt; 10 min</button>
+        <button class="chip" data-len="600-1800" aria-pressed="false">10–30 min</button>
+        <button class="chip" data-len="1800-3600" aria-pressed="false">30–60 min</button>
+        <button class="chip" data-len="3600-" aria-pressed="false">&gt; 1 h</button>
+      </div>
+      <div class="chips" id="prog">
+        <button class="chip" data-prog="" aria-pressed="true">All</button>
+        <button class="chip" data-prog="new" aria-pressed="false">Unwatched</button>
+        <button class="chip" data-prog="part" aria-pressed="false">In progress</button>
+        <button class="chip" data-prog="done" aria-pressed="false">Watched</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="hideGone" checked> Hide unavailable</label>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden>No videos match.</div>
+  <div class="error" id="error" hidden></div>
+</main>
+<dialog id="player">
+  <iframe id="frame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
+  <div class="dlg-bar">
+    <span class="t" id="dlgTitle"></span>
+    <button class="btn" id="dlgRemove" hidden>Remove from Watch Later</button>
+    <a id="dlgLink" target="_blank" rel="noopener">Open on YouTube</a>
+    <button class="btn" id="dlgClose">Close</button>
+  </div>
+</dialog>
+<script>
+const $ = id => document.getElementById(id);
+const state = { videos: [], q: "", channel: "", sort: "pos", len: "", prog: "", hideGone: true };
+
+const fmtDur = s => {
+  if (s == null) return "";
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = Math.floor(s % 60);
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${m}:${String(sec).padStart(2, "0")}`;
+};
+const fmtTotal = s => { const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; };
+const fmtViews = n => n == null ? "" : new Intl.NumberFormat("en", { notation: "compact" }).format(n) + " views";
+const DONE_AT = 95;
+const progState = v => !v.watched ? "new" : v.watched >= DONE_AT ? "done" : "part";
+const remaining = v => (v.duration || 0) * (1 - Math.min(v.watched || 0, 100) / 100);
+// YouTube gives only a whole percentage, so start a few seconds early.
+const resumeAt = v => progState(v) === "part" && v.duration ? Math.max(0, Math.floor(v.duration * v.watched / 100) - 5) : 0;
+const watchUrl = v => `https://www.youtube.com/watch?v=${v.id}&list=WL` + (resumeAt(v) ? `&t=${resumeAt(v)}s` : "");
+
+// The custom header keeps other web pages from sending requests to the server.
+function api(url, method = "GET") {
+  return fetch(url, { method, headers: { "X-Watch-Later": "1" } })
+    .then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error || r.statusText); return d; }));
+}
+
+function load(force) {
+  $("refresh").disabled = true;
+  $("refresh").textContent = force ? "Refreshing…" : "Loading…";
+  $("error").hidden = true;
+  return api(force ? "/api/refresh" : "/api/videos", force ? "POST" : "GET")
+    .then(d => {
+      state.videos = d.videos;
+      $("fetched").textContent = "Updated " + new Date(d.fetched_at * 1000).toLocaleString();
+      fillChannels();
+      render();
+    })
+    .catch(e => { $("error").hidden = false; $("error").textContent = "Could not load Watch Later:\n" + e.message; })
+    .finally(() => { $("refresh").disabled = false; $("refresh").textContent = "Refresh"; });
+}
+
+function fillChannels() {
+  const counts = new Map();
+  for (const v of state.videos) if (v.channel) counts.set(v.channel, (counts.get(v.channel) || 0) + 1);
+  const sel = $("channel");
+  sel.length = 1;
+  [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .forEach(([c, n]) => sel.add(new Option(`${c} (${n})`, c)));
+  sel.value = counts.has(state.channel) ? state.channel : "";
+  state.channel = sel.value;
+}
+
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  const [lo, hi] = state.len ? state.len.split("-").map(x => x === "" ? Infinity : +x) : [0, Infinity];
+  let list = state.videos.filter(v =>
+    (!state.hideGone || !v.unavailable) &&
+    (!state.channel || v.channel === state.channel) &&
+    (!q || v.title.toLowerCase().includes(q) || (v.channel || "").toLowerCase().includes(q)) &&
+    (!state.prog || progState(v) === state.prog) &&
+    (!state.len || (v.duration != null && v.duration >= lo && v.duration < hi)));
+  const by = {
+    "pos": (a, b) => a.position - b.position,
+    "pos-desc": (a, b) => b.position - a.position,
+    "dur": (a, b) => (a.duration ?? Infinity) - (b.duration ?? Infinity),
+    "dur-desc": (a, b) => (b.duration ?? -1) - (a.duration ?? -1),
+    "views-desc": (a, b) => (b.view_count ?? -1) - (a.view_count ?? -1),
+    "title": (a, b) => a.title.localeCompare(b.title),
+    "watched": (a, b) => (a.watched ?? 0) - (b.watched ?? 0) || a.position - b.position,
+    "watched-desc": (a, b) => (b.watched ?? 0) - (a.watched ?? 0) || a.position - b.position,
+  }[state.sort];
+  return list.sort(by);
+}
+
+function card(v) {
+  const el = document.createElement("article");
+  el.className = "card" + (v.unavailable ? " gone" : "") + (progState(v) === "done" ? " done" : "");
+  const thumb = document.createElement("div");
+  thumb.className = "thumb";
+  if (!v.unavailable) {
+    const img = new Image();
+    img.loading = "lazy"; img.alt = ""; img.src = `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`;
+    thumb.append(img);
+  }
+  const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = "#" + v.position; thumb.append(pos);
+  if (v.duration != null) { const b = document.createElement("span"); b.className = "badge"; b.textContent = fmtDur(v.duration); thumb.append(b); }
+  if (v.watched) {
+    const bar = document.createElement("div"); bar.className = "bar";
+    const fill = document.createElement("i"); fill.style.width = Math.min(v.watched, 100) + "%";
+    bar.append(fill); thumb.append(bar);
+  }
+  const acts = document.createElement("div"); acts.className = "acts";
+  if (v.watched) acts.append(actionButton(v, "Unwatch", "Clear progress (removes the video from your YouTube watch history)", "reset", () => {
+    v.watched = 0; render(); toast(`Marked "${v.title}" as never watched`);
+  }));
+  acts.append(actionButton(v, "Delete", "Remove from Watch Later on YouTube", "delete", () => dropVideo(v)));
+  thumb.append(acts);
+  const body = document.createElement("div"); body.className = "body";
+  const t = document.createElement("div"); t.className = "title"; t.textContent = v.title; t.title = v.title;
+  const meta = document.createElement("div"); meta.className = "meta";
+  if (v.channel) {
+    const a = document.createElement("a"); a.href = v.channel_url; a.target = "_blank"; a.rel = "noopener"; a.textContent = v.channel;
+    a.addEventListener("click", e => e.stopPropagation());
+    meta.append(a);
+  }
+  const extra = [fmtViews(v.view_count), v.was_live ? "Streamed" : ""].filter(Boolean).join(" · ");
+  if (extra) meta.append((v.channel ? " · " : "") + extra);
+  body.append(t, meta);
+  if (v.watched) {
+    const pr = document.createElement("div"); pr.className = "meta";
+    const pct = document.createElement("span"); pct.className = "prog";
+    pct.textContent = progState(v) === "done" ? "Watched" : `${v.watched}% watched`;
+    pr.append(pct);
+    if (progState(v) === "part" && v.duration) pr.append(` · ${fmtDur(Math.round(remaining(v)))} left`);
+    body.append(pr);
+  }
+  el.append(thumb, body);
+  if (!v.unavailable) {
+    el.tabIndex = 0;
+    el.addEventListener("click", e => (e.metaKey || e.ctrlKey) ? window.open(watchUrl(v), "_blank") : play(v));
+    el.addEventListener("keydown", e => { if (e.key === "Enter") play(v); });
+  }
+  return el;
+}
+
+function toast(msg) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  document.body.append(t); setTimeout(() => t.remove(), 4000);
+}
+
+// Sends the change to YouTube and keeps the button busy until it is done.
+function runAction(b, label, endpoint, v, onDone) {
+  b.disabled = true; b.textContent = "Working…";
+  api(`/api/${endpoint}?id=${encodeURIComponent(v.id)}`, "POST")
+    .then(onDone)
+    .catch(err => {
+      b.disabled = false; b.classList.remove("armed"); b.textContent = label;
+      toast(`${label} failed: ${err.message}`);
+    });
+}
+
+function dropVideo(v) {
+  state.videos = state.videos.filter(x => x.id !== v.id);
+  fillChannels(); render();
+  toast(`Removed "${v.title}" from Watch Later`);
+}
+
+// First click arms the button, second click sends the change to YouTube.
+function actionButton(v, label, hint, endpoint, onDone) {
+  const b = document.createElement("button");
+  b.className = "act"; b.textContent = label; b.title = hint;
+  let timer;
+  b.addEventListener("click", e => {
+    e.stopPropagation();
+    if (!b.classList.contains("armed")) {
+      b.classList.add("armed"); b.textContent = "Confirm " + label.toLowerCase();
+      timer = setTimeout(() => { b.classList.remove("armed"); b.textContent = label; }, 3000);
+      return;
+    }
+    clearTimeout(timer);
+    runAction(b, label, endpoint, v, onDone);
+  });
+  b.addEventListener("keydown", e => e.stopPropagation());
+  return b;
+}
+
+function render() {
+  const list = filtered();
+  $("grid").replaceChildren(...list.map(card));
+  $("empty").hidden = list.length > 0 || state.videos.length === 0;
+  const total = list.reduce((s, v) => s + (v.duration || 0), 0);
+  const left = list.reduce((s, v) => s + remaining(v), 0);
+  const done = list.filter(v => progState(v) === "done").length;
+  const all = state.videos.length;
+  $("stats").textContent = (list.length === all ? `${all} videos` : `${list.length} of ${all} videos`) + ` · ${fmtTotal(total)} · ${done} watched · ${fmtTotal(left)} left`;
+}
+
+// The embedded player does not reliably save the position to YouTube, so the
+// app watches for the end of the video and offers to remove it from Watch Later.
+let current = null;
+function play(v) {
+  current = v;
+  const frame = $("frame").cloneNode();
+  frame.src = `https://www.youtube.com/embed/${v.id}?autoplay=1&start=${resumeAt(v)}&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+  $("frame").replaceWith(frame);
+  $("dlgTitle").textContent = v.title;
+  $("dlgLink").href = watchUrl(v);
+  $("dlgRemove").hidden = true; $("dlgRemove").disabled = false; $("dlgRemove").textContent = "Remove from Watch Later";
+  $("player").showModal();
+  whenYouTubeApi(() => new YT.Player(frame, { events: { onStateChange: e => {
+    if (e.data === YT.PlayerState.ENDED && current === v) $("dlgRemove").hidden = false;
+  } } }));
+}
+function whenYouTubeApi(fn) {
+  if (window.YT && YT.Player) return fn();
+  (window.ytQueue ||= []).push(fn);
+  if (document.getElementById("yt-api")) return;
+  window.onYouTubeIframeAPIReady = () => window.ytQueue.splice(0).forEach(f => f());
+  const s = document.createElement("script"); s.id = "yt-api"; s.src = "https://www.youtube.com/iframe_api";
+  document.head.append(s);
+}
+$("dlgRemove").addEventListener("click", () => {
+  const v = current;
+  runAction($("dlgRemove"), "Remove from Watch Later", "delete", v, () => {
+    dropVideo(v);
+    current = null;  // the list is already up to date, so the close needs no refresh
+    $("player").close();
+  });
+});
+// YouTube may save the position from the signed-in player, so fetch the new progress.
+$("player").addEventListener("close", () => {
+  const refresh = current !== null;
+  current = null; $("frame").src = "about:blank";
+  if (refresh && !$("refresh").disabled) load(true);
+});
+$("dlgClose").addEventListener("click", () => $("player").close());
+$("player").addEventListener("click", e => { if (e.target === $("player")) $("player").close(); });
+
+$("q").addEventListener("input", e => { state.q = e.target.value; render(); });
+$("channel").addEventListener("change", e => { state.channel = e.target.value; render(); });
+$("sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
+$("hideGone").addEventListener("change", e => { state.hideGone = e.target.checked; render(); });
+// Chip groups: the group id is also the state field and the data attribute.
+for (const id of ["len", "prog"]) $(id).addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  state[id] = b.dataset[id];
+  for (const c of $(id).children) c.setAttribute("aria-pressed", c === b);
+  render();
+});
+$("refresh").addEventListener("click", () => load(true));
+document.addEventListener("keydown", e => { if (e.key === "/" && document.activeElement !== $("q")) { e.preventDefault(); $("q").focus(); } });
+
+load(false);
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+__pycache__/
+# Personal data: the fetched Watch Later list.
+watch_later.json
+watch_later.tmp
+.claude/settings.local.json
