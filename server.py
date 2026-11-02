@@ -22,10 +22,14 @@ from urllib.parse import parse_qs, urlsplit
 
 if importlib.util.find_spec("yt_dlp") is None:
     # Start again on the Python of the Homebrew yt-dlp, which can import it.
-    brew = shutil.which("brew")
+    # A launcher may start this with a PATH that does not include Homebrew.
+    brew = shutil.which("brew") or shutil.which("brew", path="/opt/homebrew/bin:/usr/local/bin")
     prefix = subprocess.run([brew, "--prefix", "yt-dlp"], capture_output=True, text=True).stdout.strip() if brew else ""
-    python = os.path.join(prefix, "libexec", "bin", "python")
-    if not prefix or not os.path.exists(python) or os.path.realpath(sys.executable) == os.path.realpath(python):
+    libexec = os.path.join(prefix, "libexec")
+    python = os.path.join(libexec, "bin", "python")
+    # Compare the venv folders, because the venv Python resolves to the same
+    # file as the Homebrew python3 that it was made from.
+    if not prefix or not os.path.exists(python) or os.path.realpath(sys.prefix) == os.path.realpath(libexec):
         sys.exit("yt-dlp not found. Install it with: brew install yt-dlp")
     os.execv(python, [python, *sys.argv])
 
