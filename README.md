@@ -36,6 +36,27 @@ On the first fetch, macOS asks for access to "Chrome Safe Storage" in the Keycha
 
 To use another Chrome profile, change `PROFILE` in `wl_edit.py`. To find the profile folder names, look in `~/Library/Application Support/Google/Chrome`.
 
+### If the app shows "could not find chrome cookies database"
+
+macOS 27 can block the server from the Chrome folder. Third-party reports describe a new protection for the data folders of some apps, and Apple can change the list of those apps. Apple does not appear to document it. With this block, yt-dlp reports this error, even when the cookie database exists. To check for the block, run this command in the same terminal that starts the server:
+
+```bash
+ls "$HOME/Library/Application Support/Google/Chrome"
+```
+
+If the command lists the folder, macOS does not block that terminal. Make sure that `PROFILE` in `wl_edit.py` names a profile folder in that list.
+
+If the command prints `Operation not permitted`, do these steps:
+
+1. In System Settings, open **Privacy & Security > Full Disk Access**.
+2. Turn on the app that starts the server, for example Terminal.
+3. Quit and open that app again.
+4. Start the server again.
+
+These steps were tested only with the Claude desktop app, not with Terminal. In that app, start the server in the Terminal panel, because the Bash tool does not get the Full Disk Access of the app.
+
+Full Disk Access lets that app and the commands that it runs read all your files. To remove the access, turn the app off on the same page. Refresh then fails again.
+
 ## How it works
 
 ```
